@@ -1,0 +1,458 @@
+unit uDemo_HTMLBuilderDB;
+
+//https://github.com/guitorres/htmlbuilder/tree/master/demo
+
+interface
+
+{uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls, DB, DBClient, uHTMLBuilder, ShellAPI;  }
+  
+const CDSFILE = 'C:\maXbox\works2021\maxbox4\examples\clients.cds';  
+
+type
+  TfrmDemo = {class(}TForm;
+  var
+    btnSampleDataSet: TButton;
+    cdsProducts: TClientDataSet;
+    cdsProductsproduct: TStringField;
+    cdsProductsprice: TStringField;
+    btnMultiHeader: TButton;
+    procedure TfrmDemoFormCreate(Sender: TObject);
+    procedure TfrmDemobtnSampleDataSetClick(Sender: TObject);
+    procedure TfrmDemobtnMultiHeaderClick(Sender: TObject);
+  //private
+    { Private declarations }
+    procedure TfrmDemoPopulateDataSet(dataSet: TDataSet);
+    procedure TfrmDemoOpenHTMLDocument(report: THTMLReport);
+    function TfrmDemoGetReportStyle:string;
+  //public
+    { Public declarations }
+  //end;
+
+var
+  frmDemo: TfrmDemo;
+
+implementation
+
+//uses Math;
+
+const
+  cNUMBER_PRODUCT=50;
+
+//{$R *.dfm}
+
+procedure TfrmDemoPopulateDataSet(dataSet: TDataSet);
+var
+  i: Integer;
+  product, price: TField;
+begin
+  product:= dataSet.FieldByName('product');
+  price  := dataSet.FieldByName('price');
+  for i := 1 to cNUMBER_PRODUCT do begin
+    dataSet.Append;
+    product.AsString := 'PRODUCT ' + FormatFloat('00', i);
+    price.AsString := '£'+ FormatFloat('#,###.00', RandomRange(1,cNUMBER_PRODUCT)*10);
+    dataSet.Post;
+  end;
+end;
+
+procedure TfrmDemoOpenHTMLDocument(report: THTMLReport);
+var
+  htmlFile: string;
+begin
+  htmlFile:= IncludeTrailingPathDelimiter(ExtractFilePath(Application.ExeName)) + 'HTMLBuild_teste.html';
+  report.SaveToFile(htmlFile);
+  //ShellExecute(Handle, 'Open', 'iexplore.exe', PChar(htmlFile), '', SW_SHOWNORMAL);
+  openWeb( htmlFile);
+end;
+
+function TfrmDemoGetReportStyle:string;
+var
+  style: TStringList;
+begin
+  style:= TStringList.Create;
+  try
+    style.Clear;
+    style.Add('* {font-family:Arial;font-size:11pt}');
+    style.Add('html, body {height:100%;}');
+    style.Add('table {width:100% ;border-collapse: collapse;}');
+    Result:= style.Text;
+  finally
+    style.Free;
+  end;
+end;
+
+procedure TfrmDemoFormCreate(Sender: TObject);
+begin
+  //cdsProducts.loadFromFile(CDSFILE);
+  //cdsProducts.open;
+  //cdsProducts.FieldDefs.Add('ID',      ftInteger, 0, False);
+  cdsProducts.DisableControls;
+  cdsProducts.FieldDefs.Add('Product',  ftString, 250, False);
+  cdsProducts.FieldDefs.Add('Price',  ftString, 10, False);
+  //MemTable.FieldDefs.Add('Created', ftDate,    0, False);
+  //MemTable.FieldDefs.Add('Volume',  ftFloat,   0, False);
+  cdsProducts.EnableControls;
+  cdsProducts.CreateDataSet;
+  TfrmDemoPopulateDataSet(TDataSet(cdsProducts));
+end;
+
+const
+  cPARAGRAPH_STYLE='style="font-weight:bold;font-size:15pt;text-align:center;"';
+
+procedure TfrmDemobtnSampleDataSetClick(Sender: TObject);
+var
+  html: THTMLReport;
+  table: THTMLTable;
+begin
+  html := THTMLReport.Create1(TfrmDemoGetReportStyle);
+  table := THTMLTable.Create('');
+  try
+  //RegisterMethod('Procedure SetDataSet( dataSet:TDataSet;HeaderColor : string; EvenColor:string; OddColor:string; EmptyValue:string; AfterAddRow:TAfterAddRow)');
+  
+    table.SetDataSet(TDataSet(cdsProducts), '#909090', '#FFFFFF', '#D0D0D0','',nil);
+    html.AddParagraph('Test using dataset', cPARAGRAPH_STYLE);
+    html.AddTable(table);
+    TfrmDemoOpenHTMLDocument(html);
+  finally
+    //FreeAndNil(html);
+    html.free
+    html:= Nil;
+  end;
+end;
+
+const
+  cPARAGRAPH_STYLE2='style="font-weight:bold;font-size:15pt;text-align:center;"';
+  cHEADER_STYLE='style="font-weight:bold;background-color:silver"';
+
+procedure TfrmDemobtnMultiHeaderClick(Sender: TObject);
+{const
+  cPARAGRAPH_STYLE='style="font-weight:bold;font-size:15pt;text-align:center;"';
+  cHEADER_STYLE='style="font-weight:bold;background-color:silver"'; }
+var
+  html: THTMLReport;
+  table: THTMLTable;
+  product, price: THTMLCell;
+  discount10, discount5, fullprice: THTMLCell;
+  priceValue: Integer;
+  i: Integer;
+begin
+  html := THTMLReport.Create1(TfrmDemoGetReportStyle);
+  try                  
+    table := THTMLTable.Create('border="1px solid black"');
+    product    := THTMLCell.Create1('Product', 'rowspan=2 ' + cHEADER_STYLE);
+    price      := THTMLCell.Create1('Price', 'colspan=3 align=center '+cHEADER_STYLE);
+    discount10 := THTMLCell.Create1('10% discount', 'width="15%" ' + cHEADER_STYLE);
+    discount5  := THTMLCell.Create1('5% discount', 'width="15%" ' + cHEADER_STYLE);
+    fullprice  := THTMLCell.Create1('full price', 'width="20%" ' + cHEADER_STYLE);
+    //header
+    table.AddRow([product, price], '');
+    //sub header
+    table.AddRow([fullprice, discount5, discount10], '');
+    //lines
+    for i := 1 to cNUMBER_PRODUCT do begin
+      priceValue := RandomRange(1, cNUMBER_PRODUCT)*10;
+      table.AddRow([THTMLCell.Create1('PRODUCT'+IntToStr(i), ''),
+        THTMLCell.Create1('$'+ FormatFloat('#,###.00', priceValue), ''),
+        THTMLCell.Create1('$'+ FormatFloat('#,###.00',(priceValue*0.95)), ''),
+        THTMLCell.Create1('$'+ FormatFloat('#,###.00',(priceValue*0.9)), '')],'');
+    end;
+
+    html.AddParagraph('Test using multi header', cPARAGRAPH_STYLE);
+    html.AddTable(table);
+    TfrmDemoOpenHTMLDocument(html);
+  finally
+    //FreeAndNil(html);
+    html.free
+    html:= Nil;
+  end;
+end;
+
+procedure loadForm;
+begin
+ frmDemo:= TfrmDemo.create(self)
+ with frmdemo do begin
+  Left := 313
+  Top:= 176
+  Caption:= 'frmDemoHTMLGen'
+  ClientHeight:= 127
+  ClientWidth:= 250
+  Color:= clBtnFace
+  Font.Charset:= DEFAULT_CHARSET
+  Font.Color:= clWindowText
+  Font.Height:= -11
+  Font.Name:= 'MS Sans Serif'
+  Font.Style:= []
+  OldCreateOrder:= False
+  OnCreate:= @TfrmDemoFormCreate;
+  PixelsPerInch:= 96
+  icon.loadfromresourcename(hinstance, 'XDEPWALK');
+  //TextHeight:= 13
+  //show;
+  btnSampleDataSet:= TButton.create(frmdemo)
+  with btnsampledataset do begin
+   parent:= frmdemo
+    Left:= 44
+    Top:= 24
+    Width:= 150
+    Height:= 25
+    Caption:= 'DataSet'
+    TabOrder:= 0
+    OnClick:= @TfrmDemobtnSampleDataSetClick;
+  end;
+  //object btnMultiHeader: TButton
+  btnMultiHeader:= TButton.create(frmdemo)
+  with btnMultiHeader do begin
+   parent:= frmdemo
+    Left:= 44
+    Top:= 64
+    Width:= 150
+    Height:= 25
+    Caption:= 'Multi Header'
+    TabOrder:= 1
+    OnClick:= @TfrmDemobtnMultiHeaderClick
+  end;
+  cdsProducts:= TClientDataSet.create(frmdemo)
+  with cdsproducts do begin
+    //Aggregates:= <>
+    //Params:= <>
+    //Left:= 168
+    {object cdsProductsproduct: TStringField
+      FieldName:= 'product'
+      Size:= 250
+    end
+    object cdsProductsprice: TStringField
+      FieldName:= 'price'
+      Size:= 10
+    end  }
+  end;
+ end;
+  TfrmDemoFormCreate(self);
+  frmdemo.Show;
+end;
+
+var ProgIDs:TStrings;
+
+begin //@main
+
+  ProgIDs:= TStringlist.create; 
+  GetRegisteredAntiviruses(ProgIDs);
+  writeln(botostr(ProgIDInstalled('{117151A5-951B-477E-91A4-699C7D9D66A2}')));
+  writeln(progids.text)
+  progids.free;
+  
+  loadForm();
+
+End.
+end.
+
+Doc:
+
+unit uPSI_uHTMLBuilder;
+{
+as a pretest to pas2js
+https://github.com/guitorres/htmlbuilder/blob/master/src/uHTMLBuilder.pas
+
+}
+interface
+ 
+
+ 
+uses
+   SysUtils
+  ,Classes
+  ,uPSComponent
+  ,uPSRuntime
+  ,uPSCompiler
+  ;
+ 
+type 
+(*----------------------------------------------------------------------------*)
+  TPSImport_uHTMLBuilder:= class(TPSPlugin)
+  public
+    procedure CompileImport1(CompExec: TPSScript); override;
+    procedure ExecImport1(CompExec: TPSScript; const ri: TPSRuntimeClassImporter); override;
+  end;
+ 
+ 
+{ compile-time registration functions }
+procedure SIRegister_THTMLBuild(CL: TPSPascalCompiler);
+procedure SIRegister_THTMLReport(CL: TPSPascalCompiler);
+procedure SIRegister_THTMLTable(CL: TPSPascalCompiler);
+procedure SIRegister_THTMLRow(CL: TPSPascalCompiler);
+procedure SIRegister_THTMLParagraph(CL: TPSPascalCompiler);
+procedure SIRegister_THTMLItem(CL: TPSPascalCompiler);
+procedure SIRegister_THTMLCell(CL: TPSPascalCompiler);
+procedure SIRegister_THTMLBase(CL: TPSPascalCompiler);
+procedure SIRegister_uHTMLBuilder(CL: TPSPascalCompiler);
+
+{ run-time registration functions }
+procedure RIRegister_THTMLBuild(CL: TPSRuntimeClassImporter);
+procedure RIRegister_THTMLReport(CL: TPSRuntimeClassImporter);
+procedure RIRegister_THTMLTable(CL: TPSRuntimeClassImporter);
+procedure RIRegister_THTMLRow(CL: TPSRuntimeClassImporter);
+procedure RIRegister_THTMLParagraph(CL: TPSRuntimeClassImporter);
+procedure RIRegister_THTMLItem(CL: TPSRuntimeClassImporter);
+procedure RIRegister_THTMLCell(CL: TPSRuntimeClassImporter);
+procedure RIRegister_THTMLBase(CL: TPSRuntimeClassImporter);
+procedure RIRegister_uHTMLBuilder(CL: TPSRuntimeClassImporter);
+
+procedure Register;
+
+implementation
+
+
+uses
+   Contnrs
+  ,DB
+  ,uHTMLBuilder
+  ;
+ 
+ 
+procedure Register;
+begin
+  RegisterComponents('Pascal Script', [TPSImport_uHTMLBuilder]);
+end;
+
+(* === compile-time registration functions === *)
+(*----------------------------------------------------------------------------*)
+procedure SIRegister_THTMLBuild(CL: TPSPascalCompiler);
+begin
+  //with RegClassS(CL,'TOBJECT', 'THTMLBuild') do
+  with CL.AddClassN(CL.FindClass('TOBJECT'),'THTMLBuild') do
+  begin
+    RegisterMethod('Function Build( item : TObject) : string');
+  end;
+end;
+
+(*----------------------------------------------------------------------------*)
+procedure SIRegister_THTMLReport(CL: TPSPascalCompiler);
+begin
+  //with RegClassS(CL,'TOBJECT', 'THTMLReport') do
+  with CL.AddClassN(CL.FindClass('TOBJECT'),'THTMLReport') do
+  begin
+    RegisterProperty('HTMLItemList', 'TObjectList', iptrw);
+    RegisterProperty('Style', 'string', iptrw);
+    RegisterProperty('StyleHTML', 'string', iptrw);
+    RegisterProperty('Head', 'string', iptrw);
+    RegisterMethod('Procedure AddTable( table : THTMLTable)');
+    RegisterMethod('Procedure AddItem( item : THTMLItem)');
+    RegisterMethod('Function AddParagraph( paragraphName, paragraphStyle : string) : THTMLParagraph');
+    RegisterMethod('Function Build : string');
+    RegisterMethod('Procedure SaveToFile( fileName : string)');
+    RegisterMethod('Procedure Clear');
+    RegisterMethod('Constructor Create;');
+     RegisterMethod('Procedure Free;');
+    RegisterMethod('Constructor Create1( reportStyle : string);');
+  end;
+end;
+
+(*----------------------------------------------------------------------------*)
+procedure SIRegister_THTMLTable(CL: TPSPascalCompiler);
+begin
+  //with RegClassS(CL,'THTMLBase', 'THTMLTable') do
+  with CL.AddClassN(CL.FindClass('THTMLBase'),'THTMLTable') do
+  begin
+    RegisterProperty('Style', 'string', iptrw);
+    RegisterProperty('RowList', 'TObjectList', iptrw);
+    RegisterMethod('Function AddRow( cellList : array of THTMLCell; rowStyle : string) : THTMLRow;');
+    RegisterMethod('Function AddRow1( rowName, rowStyle : string) : THTMLRow;');
+    RegisterMethod('Function AddEmptyRow( rowStyle : string) : THTMLRow');
+    RegisterMethod('Function Build : string');
+    RegisterMethod('Procedure SetDataSet( dataSet : TDataSet; HeaderColor : string; EvenColor: string; OddColor:string; EmptyValue:string; AfterAddRow : TAfterAddRow)');
+    RegisterMethod('Constructor Create( tableStyle : string)');
+     RegisterMethod('Procedure Free;');
+  end;
+end;
+
+(*----------------------------------------------------------------------------*)
+procedure SIRegister_THTMLRow(CL: TPSPascalCompiler);
+begin
+  //with RegClassS(CL,'TOBJECT', 'THTMLRow') do
+  with CL.AddClassN(CL.FindClass('TOBJECT'),'THTMLRow') do
+  begin
+    RegisterProperty('Style', 'string', iptrw);
+    RegisterProperty('Name', 'string', iptrw);
+    RegisterProperty('CellList', 'TObjectList', iptrw);
+    RegisterMethod('Function Build : string');
+    RegisterMethod('Function AddCell( cellName, cellStyle : string) : THTMLCell');
+    RegisterMethod('Constructor Create;');
+    RegisterMethod('Constructor Create1( rowCellList : array of THTMLCell);');
+    RegisterMethod('Constructor Create2( rowCellList : array of THTMLCell; rowStyle : string);');
+     RegisterMethod('Procedure Free;');
+  end;
+end;
+
+(*----------------------------------------------------------------------------*)
+procedure SIRegister_THTMLParagraph(CL: TPSPascalCompiler);
+begin
+  //with RegClassS(CL,'TOBJECT', 'THTMLParagraph') do
+  with CL.AddClassN(CL.FindClass('TOBJECT'),'THTMLParagraph') do
+  begin
+    RegisterProperty('Style', 'string', iptrw);
+    RegisterProperty('Name', 'string', iptrw);
+    RegisterProperty('ItemList', 'TObjectList', iptrw);
+    RegisterMethod('Function Build : string');
+    RegisterMethod('Constructor Create;');
+    RegisterMethod('Constructor Create1( paragraphName, style : string);');
+     RegisterMethod('Procedure Free;');
+  end;
+end;
+
+(*----------------------------------------------------------------------------*)
+procedure SIRegister_THTMLItem(CL: TPSPascalCompiler);
+begin
+  //with RegClassS(CL,'TOBJECT', 'THTMLItem') do
+  with CL.AddClassN(CL.FindClass('TOBJECT'),'THTMLItem') do
+  begin
+    RegisterProperty('HTML', 'TStringList', iptrw);
+    RegisterMethod('Function Build : string');
+    RegisterMethod('Constructor Create( itemHtml : string)');
+     RegisterMethod('Procedure Free;');
+  end;
+end;
+
+(*----------------------------------------------------------------------------*)
+procedure SIRegister_THTMLCell(CL: TPSPascalCompiler);
+begin
+  //with RegClassS(CL,'TOBJECT', 'THTMLCell') do
+  with CL.AddClassN(CL.FindClass('TOBJECT'),'THTMLCell') do
+  begin
+    RegisterProperty('Style', 'string', iptrw);
+    RegisterProperty('Name', 'string', iptrw);
+    RegisterProperty('ItemList', 'TObjectList', iptrw);
+    RegisterMethod('Function Build : string');
+    RegisterMethod('Constructor Create;');
+    RegisterMethod('Constructor Create1( cellName, cellStyle : string);');
+     RegisterMethod('Procedure Free;');
+  end;
+end;
+
+(*----------------------------------------------------------------------------*)
+procedure SIRegister_THTMLBase(CL: TPSPascalCompiler);
+begin
+  //with RegClassS(CL,'TOBJECT', 'THTMLBase') do
+  with CL.AddClassN(CL.FindClass('TOBJECT'),'THTMLBase') do
+  begin
+  end;
+end;
+
+(*----------------------------------------------------------------------------*)
+procedure SIRegister_uHTMLBuilder(CL: TPSPascalCompiler);
+begin
+  SIRegister_THTMLBase(CL);
+  SIRegister_THTMLCell(CL);
+  CL.AddTypeS('TAfterAddRow', 'Procedure ( Table : THTMLBase; DataSet : TDataSet)');
+  SIRegister_THTMLItem(CL);
+  SIRegister_THTMLParagraph(CL);
+  SIRegister_THTMLRow(CL);
+  SIRegister_THTMLTable(CL);
+  SIRegister_THTMLReport(CL);
+  SIRegister_THTMLBuild(CL);
+end;
+
+
+
+
+//----code_cleared_checked_clean----

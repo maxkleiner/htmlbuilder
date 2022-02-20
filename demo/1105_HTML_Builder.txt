@@ -1,0 +1,163 @@
+{
+ * https://github.com/guitorres/htmlbuilder/blob/master/src/uHTMLBuilder.pas
+}
+
+program HTMLBuilder;
+
+  //writeln('on progress..')
+  
+ var mx4: TEXEVersionData;  sa: TStringDynArray;  ProgIDs: TStrings;
+     html: THTMLReport;
+     table: THTMLTable;
+     row: THTMLRow;
+     i,j: Integer;
+  
+begin //@main
+
+  html:= THTMLReport.Create;
+  try
+    html.Style := '*{font-size:15pt}';
+    html.AddParagraph('Hello mX4 World!', '');
+    writeln(html.Build);
+    //showmessage(html.Build);
+  finally
+    html.Free;
+  end;
+  
+  html:= THTMLReport.Create;
+  table:= THTMLTable.Create('');
+  try
+    html.Style:= '*{font-size:15pt}';
+    html.AddTable(table);
+
+    for i:= 1 to 100 do begin
+      row:= THTMLRow.Create;
+      for j:= 1 to 5 do
+        row.AddCell(Format('Row %d Column %d', [i,j]), '');
+      table.RowList.Add(row);
+    end;
+
+    //ShowMessage(html.Build);
+  finally
+    html.Free;
+  end;
+  
+ { table := THTMLTable.Create('');
+  table.SetDataSet(cdsTest);
+  ShowMessage(table.Build);      }
+  
+ writeln(GetEXEVersionData(exepath+'maXbox4.exe').FileDescription); 
+End.
+
+//https://github.com/guitorres/htmlbuilder/blob/master/src/uHTMLBuilder.pas
+This package implements JSON support for FPC.
+
+function isAvxSupported: Boolean;
+asm
+{$IFDEF CPUX86}
+    push ebx
+{$ENDIF}
+{$IFDEF CPUX64}
+    mov r10, rbx
+{$ENDIF}
+    xor eax, eax
+    cpuid
+    cmp eax, 1
+    jb @not_supported
+    mov eax, 1
+    cpuid
+    and ecx, 018000000h
+    cmp ecx, 018000000h
+    jne @not_supported
+    xor ecx, ecx
+    db 0Fh, 01h, 0D0h //XGETBV
+    and eax, 110b
+    cmp eax, 110b
+    jne @not_supported
+    mov eax, 1
+    jmp @done
+@not_supported:
+    xor eax, eax
+@done:
+{$IFDEF CPUX86}
+    pop ebx
+{$ENDIF}
+{$IFDEF CPUX64}
+    mov rbx, r10
+{$ENDIF}
+end;
+
+
+
+ 
+ type
+  TEXEVersionData = record
+    CompanyName,
+    FileDescription,
+    FileVersion,
+    InternalName,
+    LegalCopyright,
+    LegalTrademarks,
+    OriginalFileName,
+    ProductName,
+    ProductVersion,
+    Comments,
+    PrivateBuild,
+    SpecialBuild: string;
+  end;
+
+function GetEXEVersionData(const FileName: string): TEXEVersionData;
+type
+  PLandCodepage = ^TLandCodepage;
+  TLandCodepage = record
+    wLanguage,
+    wCodePage: word;
+  end;
+var
+  dummy,
+  len: cardinal;
+  buf, pntr: pointer;
+  lang: string;
+begin
+  len := GetFileVersionInfoSize(PChar(FileName), dummy);
+  if len = 0 then
+    RaiseLastOSError;
+  GetMem(buf, len);
+  try
+    if not GetFileVersionInfo(PChar(FileName), 0, len, buf) then
+      RaiseLastOSError;
+
+    if not VerQueryValue(buf, '\VarFileInfo\Translation\', pntr, len) then
+      RaiseLastOSError;
+
+    lang := Format('%.4x%.4x', [PLandCodepage(pntr)^.wLanguage, PLandCodepage(pntr)^.wCodePage]);
+
+    if VerQueryValue(buf, PChar('\StringFileInfo\' + lang + '\CompanyName'), pntr, len){ and (@len <> nil)} then
+      result.CompanyName := PChar(pntr);
+    if VerQueryValue(buf, PChar('\StringFileInfo\' + lang + '\FileDescription'), pntr, len){ and (@len <> nil)} then
+      result.FileDescription := PChar(pntr);
+    if VerQueryValue(buf, PChar('\StringFileInfo\' + lang + '\FileVersion'), pntr, len){ and (@len <> nil)} then
+      result.FileVersion := PChar(pntr);
+    if VerQueryValue(buf, PChar('\StringFileInfo\' + lang + '\InternalName'), pntr, len){ and (@len <> nil)} then
+      result.InternalName := PChar(pntr);
+    if VerQueryValue(buf, PChar('\StringFileInfo\' + lang + '\LegalCopyright'), pntr, len){ and (@len <> nil)} then
+      result.LegalCopyright := PChar(pntr);
+    if VerQueryValue(buf, PChar('\StringFileInfo\' + lang + '\LegalTrademarks'), pntr, len){ and (@len <> nil)} then
+      result.LegalTrademarks := PChar(pntr);
+    if VerQueryValue(buf, PChar('\StringFileInfo\' + lang + '\OriginalFileName'), pntr, len){ and (@len <> nil)} then
+      result.OriginalFileName := PChar(pntr);
+    if VerQueryValue(buf, PChar('\StringFileInfo\' + lang + '\ProductName'), pntr, len){ and (@len <> nil)} then
+      result.ProductName := PChar(pntr);
+    if VerQueryValue(buf, PChar('\StringFileInfo\' + lang + '\ProductVersion'), pntr, len){ and (@len <> nil)} then
+      result.ProductVersion := PChar(pntr);
+    if VerQueryValue(buf, PChar('\StringFileInfo\' + lang + '\Comments'), pntr, len){ and (@len <> nil)} then
+      result.Comments := PChar(pntr);
+    if VerQueryValue(buf, PChar('\StringFileInfo\' + lang + '\PrivateBuild'), pntr, len){ and (@len <> nil)} then
+      result.PrivateBuild := PChar(pntr);
+    if VerQueryValue(buf, PChar('\StringFileInfo\' + lang + '\SpecialBuild'), pntr, len){ and (@len <> nil)} then
+      result.SpecialBuild := PChar(pntr);
+  finally
+    FreeMem(buf);
+  end;
+end;
+    
